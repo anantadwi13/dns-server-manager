@@ -13,8 +13,6 @@ type ZoneRepository interface {
 	GetZoneById(ctx context.Context, zoneId string) (*Zone, error)
 	GetZoneByDomain(ctx context.Context, domain string) (*Zone, error)
 
-	GetRecordById(ctx context.Context, recordId string) (*Record, error)
-
 	Persist(ctx context.Context, zone *Zone) error
 	Delete(ctx context.Context, zoneId string) error
 }
@@ -122,13 +120,13 @@ func (z *sqliteZoneRepository) GetZoneById(ctx context.Context, zoneId string) (
 	}
 	z.filePathAssigner(zone)
 
-	recordRows, err := z.db.QueryContext(ctx, "SELECT * FROM records;")
+	recordRows, err := z.db.QueryContext(ctx, "SELECT * FROM records WHERE zone_id = ?;", zone.Id)
 	if err != nil {
 		return nil, err
 	}
 	defer recordRows.Close()
 
-	soaRows, err := z.db.QueryContext(ctx, "SELECT * FROM soas;")
+	soaRows, err := z.db.QueryContext(ctx, "SELECT * FROM soas WHERE zone_id = ?;", zone.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +162,13 @@ func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domain strin
 	}
 	z.filePathAssigner(zone)
 
-	recordRows, err := z.db.QueryContext(ctx, "SELECT * FROM records;")
+	recordRows, err := z.db.QueryContext(ctx, "SELECT * FROM records WHERE zone_id = ?;", zone.Id)
 	if err != nil {
 		return nil, err
 	}
 	defer recordRows.Close()
 
-	soaRows, err := z.db.QueryContext(ctx, "SELECT * FROM soas;")
+	soaRows, err := z.db.QueryContext(ctx, "SELECT * FROM soas WHERE zone_id = ?;", zone.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -182,10 +180,6 @@ func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domain strin
 	}
 
 	return zone, nil
-}
-
-func (z *sqliteZoneRepository) GetRecordById(ctx context.Context, recordId string) (*Record, error) {
-	panic("implement me")
 }
 
 func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *Zone) (err error) {
