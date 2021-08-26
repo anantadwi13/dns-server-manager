@@ -150,7 +150,6 @@ func (b *bind9Server) generateNamedConf(zones []*Zone) error {
 }
 
 func (b *bind9Server) generateDbRecords(ctx context.Context, zones []*Zone) (err error) {
-	fileContents := "$TTL    14400\n"
 	soaFormat := `%v	IN	SOA     %v %v (
 						%v				; Serial 2021082501
 						%v				; Refresh 7200
@@ -160,6 +159,7 @@ func (b *bind9Server) generateDbRecords(ctx context.Context, zones []*Zone) (err
 	recordFormat := "%v	IN	%v	%v\n"
 
 	for _, zone := range zones {
+		fileContents := "$TTL    14400\n"
 		soa := zone.SOA
 		if soa == nil {
 			continue
