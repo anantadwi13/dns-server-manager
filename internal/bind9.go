@@ -130,20 +130,11 @@ func (b *bind9Server) Shutdown(ctx context.Context) error {
 }
 
 func (b *bind9Server) generateNamedConf(zones []*Zone) error {
-	fileContents := fmt.Sprintf(`
-		include "%v";
-		include "%v";
-		include "%v";
-	`, filepath.Join(b.config.BindFolderPath(), "named.conf.options"),
+	fileContents := fmt.Sprintf(`include "%v"; include "%v"; include "%v";`+"\n",
+		filepath.Join(b.config.BindFolderPath(), "named.conf.options"),
 		filepath.Join(b.config.BindFolderPath(), "named.conf.local"),
 		filepath.Join(b.config.BindFolderPath(), "named.conf.default-zones"))
-	zoneFormat := `
-		zone "%v" {
-			type primary;
-			file "%v";
-			//	notify explicit;
-		};
-	`
+	zoneFormat := `zone "%v" {type primary; file "%v";};` + "\n"
 	for _, zone := range zones {
 		if !zone.IsValid() {
 			continue
@@ -159,20 +150,14 @@ func (b *bind9Server) generateNamedConf(zones []*Zone) error {
 }
 
 func (b *bind9Server) generateDbRecords(ctx context.Context, zones []*Zone) (err error) {
-	fileContents := `
-		$TTL    14400
-	`
-	soaFormat := `
-		%v	IN	SOA     %v %v (
+	fileContents := "$TTL    14400\n"
+	soaFormat := `%v	IN	SOA     %v %v (
 						%v				; Serial 2021082501
 						%v				; Refresh 7200
 						%v				; Retry 3600
 						%v				; Expire 1209600
-						%v )			; Negative Cache TTL 180
-	`
-	recordFormat := `
-		%v	IN	%v	%v
-	`
+						%v )			; Negative Cache TTL 180` + "\n"
+	recordFormat := "%v	IN	%v	%v\n"
 
 	for _, zone := range zones {
 		soa := zone.SOA
