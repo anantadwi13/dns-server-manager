@@ -1,9 +1,10 @@
-package internal
+package external
 
 import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/anantadwi13/dns-server-manager/internal/domain"
 	"github.com/pkg/errors"
 	"log"
 	"os"
@@ -13,15 +14,15 @@ import (
 )
 
 type bind9Server struct {
-	config         Config
-	zoneRepo       ZoneRepository
+	config         domain.Config
+	zoneRepo       domain.ZoneRepository
 	numLock        sync.RWMutex
 	numCmds        int
 	shutdownSignal chan int
 	reloadSignal   chan int
 }
 
-func NewBind9Server(config Config, zoneRepo ZoneRepository) DNSServer {
+func NewBind9Server(config domain.Config, zoneRepo domain.ZoneRepository) domain.DNSServer {
 	return &bind9Server{
 		config:         config,
 		zoneRepo:       zoneRepo,
@@ -129,7 +130,7 @@ func (b *bind9Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (b *bind9Server) generateNamedConf(zones []*Zone) error {
+func (b *bind9Server) generateNamedConf(zones []*domain.Zone) error {
 	fileContents := fmt.Sprintf(`include "%v"; include "%v"; include "%v";`+"\n",
 		filepath.Join(b.config.BindFolderPath(), "named.conf.options"),
 		filepath.Join(b.config.BindFolderPath(), "named.conf.local"),
@@ -149,7 +150,7 @@ func (b *bind9Server) generateNamedConf(zones []*Zone) error {
 	return nil
 }
 
-func (b *bind9Server) generateDbRecords(ctx context.Context, zones []*Zone) (err error) {
+func (b *bind9Server) generateDbRecords(ctx context.Context, zones []*domain.Zone) (err error) {
 	soaFormat := `%v	IN	SOA     %v %v (
 						%v				; Serial 2021082501
 						%v				; Refresh 7200

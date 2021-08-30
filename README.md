@@ -8,8 +8,8 @@ Manage DNS Server (Bind9) via REST API
 docker run -it --name dns-server \
       -p 53:53/tcp \
       -p 53:53/udp \
-      -p 953:953/tcp \
-      -p 80:80 \
-      -v /path/to/data:/data \
+      -p 127.0.0.1:953:953/tcp \
+      -p 5555:5555 \
+      -v $(pwd)/temp/data:/data \
       anantadwi13/dns-server-manager
 ```

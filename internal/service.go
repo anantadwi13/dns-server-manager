@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"github.com/anantadwi13/dns-server-manager/internal/domain"
+	"github.com/anantadwi13/dns-server-manager/internal/external"
 	"github.com/labstack/echo/v4"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
@@ -10,20 +12,21 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 )
 
 type service struct {
-	config         Config
+	config         domain.Config
 	e              *echo.Echo
 	db             *sql.DB
-	migration      Migration
-	zoneRepository ZoneRepository
-	bindHelper     DNSServer
+	migration      domain.Migration
+	zoneRepository domain.ZoneRepository
+	bindHelper     domain.DNSServer
+	shutdownWg     sync.WaitGroup
 }
 
-func NewService(config Config) *service {
+func NewService(config domain.Config) *service {
 	return &service{config: config}
 }
 
@@ -44,7 +47,7 @@ func (s *service) Start() {
 	case <-signalOS:
 		log.Println("Service is stopping")
 		s.gracefulShutdown(ctx)
-		time.Sleep(3 * time.Second)
+		s.shutdownWg.Wait()
 		log.Println("Service is stopped")
 	}
 }
@@ -61,15 +64,15 @@ func (s *service) registerDependencies(ctx context.Context) {
 		log.Panicln(err)
 	}
 
-	s.migration = NewSqliteMigration(s.db)
+	s.migration = external.NewSqliteMigration(s.db)
 	err = s.migration.Migrate(ctx)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	s.zoneRepository = NewSqliteZoneRepository(s.config, s.db)
+	s.zoneRepository = external.NewSqliteZoneRepository(s.config, s.db)
 
-	s.bindHelper = NewBind9Server(s.config, s.zoneRepository)
+	s.bindHelper = external.NewBind9Server(s.config, s.zoneRepository)
 }
 
 func (s *service) registerRoute() {
@@ -95,7 +98,7 @@ func (s *service) loadBindService(ctx context.Context) {
 
 func (s *service) loadAPIServer(ctx context.Context) {
 	go func() {
-		err := s.e.Start(":80")
+		err := s.e.Start(":5555")
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("shutting down the server %v\n", err)
 		}
@@ -104,18 +107,24 @@ func (s *service) loadAPIServer(ctx context.Context) {
 
 func (s *service) gracefulShutdown(ctx context.Context) {
 	go func() {
+		s.shutdownWg.Add(1)
+		defer s.shutdownWg.Done()
 		err := s.bindHelper.Shutdown(ctx)
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}()
 	go func() {
+		s.shutdownWg.Add(1)
+		defer s.shutdownWg.Done()
 		err := s.e.Shutdown(ctx)
 		if err != nil {
 			log.Fatalln(err)
 		}
 	}()
 	go func() {
+		s.shutdownWg.Add(1)
+		defer s.shutdownWg.Done()
 		err := s.db.Close()
 		if err != nil {
 			log.Fatalln(err)
@@ -129,7 +138,7 @@ func (s *service) handleListZones(c echo.Context) error {
 		return err
 	}
 	if zones == nil {
-		zones = []*Zone{}
+		zones = []*domain.Zone{}
 	}
 	return c.JSON(http.StatusOK, zones)
 }
@@ -149,15 +158,15 @@ func (s *service) handleDetailZone(c echo.Context) error {
 }
 
 func (s *service) handleCreateZone(c echo.Context) error {
-	domain := c.FormValue("domain")
-	primaryNS := c.FormValue("primary_ns")
-	mailAddr := c.FormValue("mail_addr")
+	domainReq := c.FormValue("domain")
+	primaryNSReq := c.FormValue("primary_ns")
+	mailAddrReq := c.FormValue("mail_addr")
 
-	if domain == "" || primaryNS == "" || mailAddr == "" {
+	if domainReq == "" || primaryNSReq == "" || mailAddrReq == "" {
 		return responseClientErr(c, errors.New("make sure domain, primary_ns, and mail_addr are set"))
 	}
 
-	zoneExist, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domain)
+	zoneExist, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainReq)
 	if err != nil {
 		return responseClientErr(c, err)
 	}
@@ -165,14 +174,14 @@ func (s *service) handleCreateZone(c echo.Context) error {
 		return responseClientErr(c, errors.New("zone already exists"))
 	}
 
-	zone := NewZone(domain)
+	zone := domain.NewZone(domainReq)
 
-	err = zone.RegisterSOA(NewDefaultSOARecord(primaryNS, mailAddr))
+	err = zone.RegisterSOA(domain.NewDefaultSOARecord(primaryNSReq, mailAddrReq))
 	if err != nil {
 		return responseClientErr(c, err)
 	}
 
-	err = zone.AddRecord(NewNSRecord("@", primaryNS))
+	err = zone.AddRecord(domain.NewNSRecord("@", primaryNSReq))
 	if err != nil {
 		return responseClientErr(c, err)
 	}
@@ -193,9 +202,9 @@ func (s *service) handleCreateZone(c echo.Context) error {
 func (s *service) handleUpdateZone(c echo.Context) error {
 	ctx := c.Request().Context()
 	zoneId := c.Param("zone_id")
-	domain := c.FormValue("domain")
-	primaryNS := c.FormValue("primary_ns")
-	mailAddr := c.FormValue("mail_addr")
+	domainReq := c.FormValue("domain")
+	primaryNSReq := c.FormValue("primary_ns")
+	mailAddrReq := c.FormValue("mail_addr")
 	//filePath := c.FormValue("file_path")
 
 	zone, err := s.zoneRepository.GetZoneById(ctx, zoneId)
@@ -206,14 +215,14 @@ func (s *service) handleUpdateZone(c echo.Context) error {
 		return responseNotFound(c, "zone is not found")
 	}
 
-	if domain != "" {
-		zone.Domain = domain
+	if domainReq != "" {
+		zone.Domain = domainReq
 	}
-	if primaryNS != "" {
-		zone.SOA.PrimaryNameServer = primaryNS
+	if primaryNSReq != "" {
+		zone.SOA.PrimaryNameServer = primaryNSReq
 	}
-	if mailAddr != "" {
-		zone.SOA.MailAddress = mailAddr
+	if mailAddrReq != "" {
+		zone.SOA.MailAddress = mailAddrReq
 	}
 	//if filePath != "" {
 	//	zone.FilePath = filepath.Clean(filePath)
@@ -241,7 +250,7 @@ func (s *service) handleDeleteZone(c echo.Context) error {
 
 	err := s.zoneRepository.Delete(c.Request().Context(), zoneId)
 	if err != nil {
-		if errors.Is(err, ErrorZoneNotFound) {
+		if errors.Is(err, domain.ErrorZoneNotFound) {
 			return responseNotFound(c, "zone is not found")
 		}
 		return responseServerErr(c, err)
@@ -268,7 +277,7 @@ func (s *service) handleListRecords(c echo.Context) error {
 	}
 
 	if len(zone.Records) <= 0 {
-		return c.JSON(http.StatusOK, []*Record{})
+		return c.JSON(http.StatusOK, []*domain.Record{})
 	}
 
 	return c.JSON(http.StatusOK, zone.Records)
@@ -313,7 +322,7 @@ func (s *service) handleCreateRecord(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, MessageResponse{"zone is not found"})
 	}
 
-	record := NewRecord(name, recordType, value)
+	record := domain.NewRecord(name, recordType, value)
 
 	err = zone.AddRecord(record)
 	if err != nil {
@@ -348,7 +357,7 @@ func (s *service) handleUpdateRecord(c echo.Context) error {
 		return responseNotFound(c, "zone is not found")
 	}
 
-	var record *Record
+	var record *domain.Record
 
 	for _, r := range zone.Records {
 		if r.Id == recordId {
@@ -400,7 +409,7 @@ func (s *service) handleDeleteRecord(c echo.Context) error {
 		return responseNotFound(c, "zone is not found")
 	}
 
-	var record *Record
+	var record *domain.Record
 	for _, r := range zone.Records {
 		if r.Id == recordId {
 			record = r

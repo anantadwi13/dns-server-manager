@@ -1,38 +1,24 @@
-package internal
+package external
 
 import (
 	"context"
 	"database/sql"
+	"github.com/anantadwi13/dns-server-manager/internal/domain"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"path/filepath"
 )
 
-type ZoneRepository interface {
-	GetAllZones(ctx context.Context) ([]*Zone, error)
-	GetZoneById(ctx context.Context, zoneId string) (*Zone, error)
-	GetZoneByDomain(ctx context.Context, domain string) (*Zone, error)
-
-	Persist(ctx context.Context, zone *Zone) error
-	Delete(ctx context.Context, zoneId string) error
-}
-
-var ErrorZoneNotFound = errors.New("zone is not found")
-
-type Migration interface {
-	Migrate(ctx context.Context) error
-}
-
 type sqliteZoneRepository struct {
-	config Config
+	config domain.Config
 	db     *sql.DB
 }
 
-func NewSqliteZoneRepository(config Config, db *sql.DB) ZoneRepository {
+func NewSqliteZoneRepository(config domain.Config, db *sql.DB) domain.ZoneRepository {
 	return &sqliteZoneRepository{config: config, db: db}
 }
 
-func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*Zone, error) {
+func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*domain.Zone, error) {
 	zoneRows, err := z.db.QueryContext(ctx, "SELECT * FROM zones;")
 	if err != nil {
 		return nil, err
@@ -51,9 +37,9 @@ func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*Zone, error)
 	}
 	defer soaRows.Close()
 
-	var mapZones = map[string]*Zone{}
+	var mapZones = map[string]*domain.Zone{}
 	for zoneRows.Next() {
-		zone := &Zone{}
+		zone := &domain.Zone{}
 		err := zoneRows.Scan(&zone.Id, &zone.Domain, &zone.FilePath)
 		if err != nil {
 			return nil, err
@@ -63,7 +49,7 @@ func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*Zone, error)
 	}
 
 	for recordRows.Next() {
-		record := &Record{}
+		record := &domain.Record{}
 		var zoneId string
 		err := recordRows.Scan(&record.Id, &zoneId, &record.Name, &record.Type, &record.Value)
 		if err != nil {
@@ -77,7 +63,7 @@ func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*Zone, error)
 	}
 
 	for soaRows.Next() {
-		soa := &SOARecord{}
+		soa := &domain.SOARecord{}
 		var zoneId string
 		err := soaRows.Scan(&soa.Id, &zoneId, &soa.Name, &soa.PrimaryNameServer, &soa.MailAddress, &soa.Serial,
 			&soa.SerialCounter, &soa.Refresh, &soa.Retry, &soa.Expire, &soa.CacheTTL)
@@ -91,23 +77,23 @@ func (z *sqliteZoneRepository) GetAllZones(ctx context.Context) ([]*Zone, error)
 		zone.SOA = soa
 	}
 
-	var zones []*Zone
+	var zones []*domain.Zone
 	for _, zone := range mapZones {
 		zones = append(zones, zone)
 	}
 	return zones, nil
 }
 
-func (z *sqliteZoneRepository) GetZoneById(ctx context.Context, zoneId string) (*Zone, error) {
+func (z *sqliteZoneRepository) GetZoneById(ctx context.Context, zoneId string) (*domain.Zone, error) {
 	zoneRows, err := z.db.QueryContext(ctx, "SELECT * FROM zones WHERE id = ?;", zoneId)
 	if err != nil {
 		return nil, err
 	}
 	defer zoneRows.Close()
 
-	var zone *Zone
+	var zone *domain.Zone
 	for zoneRows.Next() {
-		zone = &Zone{}
+		zone = &domain.Zone{}
 		err := zoneRows.Scan(&zone.Id, &zone.Domain, &zone.FilePath)
 		if err != nil {
 			return nil, err
@@ -140,16 +126,16 @@ func (z *sqliteZoneRepository) GetZoneById(ctx context.Context, zoneId string) (
 	return zone, nil
 }
 
-func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domain string) (*Zone, error) {
-	zoneRows, err := z.db.QueryContext(ctx, "SELECT * FROM zones WHERE domain = ?;", domain)
+func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domainName string) (*domain.Zone, error) {
+	zoneRows, err := z.db.QueryContext(ctx, "SELECT * FROM zones WHERE domain = ?;", domainName)
 	if err != nil {
 		return nil, err
 	}
 	defer zoneRows.Close()
 
-	var zone *Zone
+	var zone *domain.Zone
 	for zoneRows.Next() {
-		zone = &Zone{}
+		zone = &domain.Zone{}
 		err := zoneRows.Scan(&zone.Id, &zone.Domain, &zone.FilePath)
 		if err != nil {
 			return nil, err
@@ -182,7 +168,7 @@ func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domain strin
 	return zone, nil
 }
 
-func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *Zone) (err error) {
+func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *domain.Zone) (err error) {
 	tx, err := z.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -243,7 +229,7 @@ func (z *sqliteZoneRepository) Delete(ctx context.Context, zoneId string) (err e
 	}
 
 	if zone == nil {
-		return ErrorZoneNotFound
+		return domain.ErrorZoneNotFound
 	}
 
 	tx, err := z.db.BeginTx(ctx, nil)
@@ -279,9 +265,9 @@ func (z *sqliteZoneRepository) finishTransaction(err error, tx *sql.Tx) error {
 	}
 }
 
-func (z *sqliteZoneRepository) zonesMapper(zone *Zone, recordRows, soaRows *sql.Rows) error {
+func (z *sqliteZoneRepository) zonesMapper(zone *domain.Zone, recordRows, soaRows *sql.Rows) error {
 	for soaRows.Next() {
-		soa := &SOARecord{}
+		soa := &domain.SOARecord{}
 		var zoneId string
 		err := soaRows.Scan(&soa.Id, &zoneId, &soa.Name, &soa.PrimaryNameServer, &soa.MailAddress, &soa.Serial,
 			&soa.SerialCounter, &soa.Refresh, &soa.Retry, &soa.Expire, &soa.CacheTTL)
@@ -292,7 +278,7 @@ func (z *sqliteZoneRepository) zonesMapper(zone *Zone, recordRows, soaRows *sql.
 	}
 
 	for recordRows.Next() {
-		record := &Record{}
+		record := &domain.Record{}
 		var zoneId string
 		err := recordRows.Scan(&record.Id, &zoneId, &record.Name, &record.Type, &record.Value)
 		if err != nil {
@@ -303,7 +289,7 @@ func (z *sqliteZoneRepository) zonesMapper(zone *Zone, recordRows, soaRows *sql.
 	return nil
 }
 
-func (z *sqliteZoneRepository) filePathAssigner(zone *Zone) {
+func (z *sqliteZoneRepository) filePathAssigner(zone *domain.Zone) {
 	zone.FilePath = filepath.Join(z.config.BindFolderPath(), "db-"+zone.Domain)
 }
 
@@ -311,7 +297,7 @@ type sqliteMigration struct {
 	db *sql.DB
 }
 
-func NewSqliteMigration(db *sql.DB) Migration {
+func NewSqliteMigration(db *sql.DB) domain.Migration {
 	return &sqliteMigration{db: db}
 }
 

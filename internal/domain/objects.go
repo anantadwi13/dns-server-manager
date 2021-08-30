@@ -1,4 +1,4 @@
-package internal
+package domain
 
 import (
 	"errors"
