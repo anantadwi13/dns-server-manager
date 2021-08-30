@@ -171,7 +171,7 @@ func (z *sqliteZoneRepository) GetZoneByDomain(ctx context.Context, domainName s
 func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *domain.Zone) (err error) {
 	tx, err := z.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer func() {
@@ -183,6 +183,31 @@ func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *domain.Zone) (
 	}
 	if zone.FilePath == "" {
 		z.filePathAssigner(zone)
+	}
+
+	oldZone, err := z.GetZoneById(ctx, zone.Id)
+	if err != nil {
+		return
+	}
+
+	if oldZone != nil {
+		deletedRecords := make(map[string]*domain.Record)
+		for _, record := range oldZone.Records {
+			deletedRecords[record.Id] = record
+		}
+		for _, record := range zone.Records {
+			if d, ok := deletedRecords[record.Id]; ok && d != nil {
+				delete(deletedRecords, record.Id)
+			}
+		}
+		for _, record := range deletedRecords {
+			_, err = tx.ExecContext(ctx, `
+				DELETE FROM records WHERE id = ?;
+			`, record.Id)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	_, err = tx.ExecContext(ctx, `
@@ -222,12 +247,7 @@ func (z *sqliteZoneRepository) Persist(ctx context.Context, zone *domain.Zone) (
 	return
 }
 
-func (z *sqliteZoneRepository) Delete(ctx context.Context, zoneId string) (err error) {
-	zone, err := z.GetZoneById(ctx, zoneId)
-	if err != nil {
-		return err
-	}
-
+func (z *sqliteZoneRepository) Delete(ctx context.Context, zone *domain.Zone) (err error) {
 	if zone == nil {
 		return domain.ErrorZoneNotFound
 	}
@@ -244,7 +264,7 @@ func (z *sqliteZoneRepository) Delete(ctx context.Context, zoneId string) (err e
 		DELETE FROM zones WHERE id = ?;
 		DELETE FROM soas WHERE zone_id = ?;
 		DELETE FROM records WHERE zone_id = ?;
-	`, zoneId, zoneId, zoneId)
+	`, zone.Id, zone.Id, zone.Id)
 
 	return
 }

@@ -11,7 +11,7 @@ type ZoneRepository interface {
 	GetZoneByDomain(ctx context.Context, domain string) (*Zone, error)
 
 	Persist(ctx context.Context, zone *Zone) error
-	Delete(ctx context.Context, zoneId string) error
+	Delete(ctx context.Context, zone *Zone) error
 }
 
 var ErrorZoneNotFound = errors.New("zone is not found")

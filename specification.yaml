@@ -4,7 +4,7 @@ info:
   description: DNS Server Manager
   version: 0.2.0
 servers:
-  - url: 'http://{hostname}/'
+  - url: 'http://{hostname}:5555'
     variables:
       hostname:
         default: localhost
@@ -41,10 +41,10 @@ paths:
                   example: example.com
                 primary_ns:
                   type: string
-                  example: ns1.example.com
+                  example: ns1.example.com.
                 mail_addr:
                   type: string
-                  example: root.example.com
+                  example: root.example.com.
       responses:
         201:
           description: Created
@@ -99,10 +99,10 @@ paths:
                   example: example.com
                 primary_ns:
                   type: string
-                  example: ns1.example.com
+                  example: ns1.example.com.
                 mail_addr:
                   type: string
-                  example: root.example.com
+                  example: root.example.com.
       responses:
         200:
           description: OK
@@ -175,7 +175,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/record"
+              $ref: "#/components/schemas/record-req"
       responses:
         201:
           description: Created
@@ -237,7 +237,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/record"
+              $ref: "#/components/schemas/record-req"
       responses:
         200:
           description: OK
@@ -282,6 +282,7 @@ components:
   schemas:
     zone-res:
       type: object
+      required: [ id,domain,records,soa ]
       properties:
         id:
           type: string
@@ -297,6 +298,7 @@ components:
             $ref: "#/components/schemas/record-res"
     soa-res:
       type: object
+      required: [ id,name,primary_name_server,mail_address,serial,refresh,retry,expire,cache_ttl ]
       properties:
         id:
           type: string
@@ -325,8 +327,9 @@ components:
         cache_ttl:
           type: integer
           example: 180
-    record:
+    record-req:
       type: object
+      required: [ name,type,value ]
       properties:
         name:
           type: string
@@ -340,13 +343,21 @@ components:
           example: 127.0.0.1
     record-res:
       type: object
-      allOf:
-        - type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-        - $ref: "#/components/schemas/record"
+      required: [ id,name,type,value ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "@"
+        type:
+          type: string
+          enum: [ A,AAAA,NS,CNAME,MX,TXT,SRV,DNSKEY,KEY,IPSECKEY,PTR,SPF,TLSA,CAA ]
+          example: A
+        value:
+          type: string
+          example: 127.0.0.1
     general-res:
       title: General Response
       type: object
