@@ -14,6 +14,7 @@ tags:
 paths:
   /zones:
     get:
+      summary: Get all zones
       tags:
         - Zone
       responses:
@@ -28,6 +29,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     post:
+      summary: Create a new zone
       tags:
         - Zone
       requestBody:
@@ -58,6 +60,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /zones/{domain}:
     get:
+      summary: Get a zone by domain name
       tags:
         - Zone
       parameters:
@@ -79,6 +82,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     put:
+      summary: Update the selected zone
       tags:
         - Zone
       parameters:
@@ -117,6 +121,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     delete:
+      summary: Delete the selected zone
       tags:
         - Zone
       parameters:
@@ -139,6 +144,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /records/{domain}:
     get:
+      summary: Get all records on the selected zone
       tags:
         - Record
       parameters:
@@ -162,6 +168,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     post:
+      summary: Create a new record on the selected zone
       tags:
         - Record
       parameters:
@@ -191,6 +198,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /records/{domain}/{record_id}:
     get:
+      summary: Get a record by id on the selected zone
       tags:
         - Record
       parameters:
@@ -218,6 +226,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     put:
+      summary: Update a record by id on the selected zone
       tags:
         - Record
       parameters:
@@ -252,6 +261,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     delete:
+      summary: Delete a record by id on the selected zone
       tags:
         - Record
       parameters:

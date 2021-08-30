@@ -18,6 +18,7 @@ type bind9Server struct {
 	zoneRepo       domain.ZoneRepository
 	numLock        sync.RWMutex
 	numCmds        int
+	runningCmdsWg  sync.WaitGroup
 	shutdownSignal chan int
 	reloadSignal   chan int
 }
@@ -73,6 +74,7 @@ func (b *bind9Server) Reload(ctx context.Context) error {
 		b.numLock.Lock()
 		b.numCmds++
 		b.numLock.Unlock()
+		b.runningCmdsWg.Add(1)
 
 		scanner := bufio.NewScanner(logs)
 		for scanner.Scan() {
@@ -84,6 +86,13 @@ func (b *bind9Server) Reload(ctx context.Context) error {
 	}()
 
 	go func() {
+		defer func() {
+			b.numLock.Lock()
+			b.numCmds -= 1
+			b.numLock.Unlock()
+			b.runningCmdsWg.Done()
+		}()
+
 		select {
 		case <-b.shutdownSignal:
 			if err := cmd.Process.Kill(); err != nil {
@@ -101,9 +110,6 @@ func (b *bind9Server) Reload(ctx context.Context) error {
 			}
 			log.Println("Exit Bind9")
 		}
-		b.numLock.Lock()
-		b.numCmds -= 1
-		b.numLock.Unlock()
 	}()
 	return err
 }
@@ -127,6 +133,7 @@ func (b *bind9Server) Shutdown(ctx context.Context) error {
 	for i := 0; i < numCmds; i++ {
 		b.shutdownSignal <- 1
 	}
+	b.runningCmdsWg.Wait()
 	return nil
 }
 

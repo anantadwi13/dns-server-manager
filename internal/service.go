@@ -18,7 +18,7 @@ import (
 
 type service struct {
 	config         domain.Config
-	e              *echo.Echo
+	apiServer      *echo.Echo
 	db             *sql.DB
 	migration      domain.Migration
 	zoneRepository domain.ZoneRepository
@@ -51,7 +51,7 @@ func (s *service) Start() {
 }
 
 func (s *service) registerDependencies(ctx context.Context) {
-	s.e = echo.New()
+	s.apiServer = echo.New()
 
 	err := os.MkdirAll(s.config.DataFolderPath(), 0777)
 	if err != nil {
@@ -82,8 +82,39 @@ func (s *service) loadBindService(ctx context.Context) {
 
 func (s *service) loadAPIServer(ctx context.Context) {
 	go func() {
-		external.RegisterHandlers(s.e, s)
-		err := s.e.Start(":5555")
+		external.RegisterHandlers(s.apiServer, s)
+		s.apiServer.GET("/specs", func(c echo.Context) error {
+			return c.File("./specification.yaml")
+		})
+		s.apiServer.GET("/docs", func(c echo.Context) error {
+			return c.HTML(http.StatusOK, `
+			<!DOCTYPE html>
+			<html>
+			  <head>
+				<title>DNS Server Manager</title>
+				<!-- needed for adaptive design -->
+				<meta charset="utf-8"/>
+				<meta name="viewport" content="width=device-width, initial-scale=1">
+				<link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+			
+				<!--
+				ReDoc doesn't change outer page styles
+				-->
+				<style>
+				  body {
+					margin: 0;
+					padding: 0;
+				  }
+				</style>
+			  </head>
+			  <body>
+				<redoc spec-url='/specs'></redoc>
+				<script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"> </script>
+			  </body>
+			</html>
+		`)
+		})
+		err := s.apiServer.Start(":5555")
 		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("shutting down the server %v\n", err)
 		}
@@ -102,7 +133,7 @@ func (s *service) gracefulShutdown(ctx context.Context) {
 	go func() {
 		s.shutdownWg.Add(1)
 		defer s.shutdownWg.Done()
-		err := s.e.Shutdown(ctx)
+		err := s.apiServer.Shutdown(ctx)
 		if err != nil {
 			log.Fatalln(err)
 		}

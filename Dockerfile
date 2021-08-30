@@ -11,6 +11,7 @@ RUN GOOS=linux go build -o service ./cmd/service/
 FROM internetsystemsconsortium/bind9:9.16
 WORKDIR /root
 COPY --from=builder /go/src/bind9/service .
+COPY specification.yaml .
 
 VOLUME ["/var/log", "/data"]
 

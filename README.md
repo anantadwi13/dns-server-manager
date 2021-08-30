@@ -4,6 +4,8 @@ Manage DNS Server (Bind9) via REST API
 
 ## Installation
 
+Run container
+
 ```shell
 docker run -it --name dns-server \
       -p 53:53/tcp \
@@ -13,3 +15,7 @@ docker run -it --name dns-server \
       -v $(pwd)/temp/data:/data \
       anantadwi13/dns-server-manager
 ```
+
+## Usage
+
+After running container, open API Specification on `http://{host}:5555/docs`
