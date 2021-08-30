@@ -132,34 +132,34 @@ type NotFound GeneralRes
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
+	// Get all records on the selected zone
 	// (GET /records/{domain})
 	GetRecordsDomain(ctx echo.Context, domain string) error
-
+	// Create a new record on the selected zone
 	// (POST /records/{domain})
 	PostRecordsDomain(ctx echo.Context, domain string) error
-
+	// Delete a record by id on the selected zone
 	// (DELETE /records/{domain}/{record_id})
 	DeleteRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
-
+	// Get a record by id on the selected zone
 	// (GET /records/{domain}/{record_id})
 	GetRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
-
+	// Update a record by id on the selected zone
 	// (PUT /records/{domain}/{record_id})
 	PutRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
-
+	// Get all zones
 	// (GET /zones)
 	GetZones(ctx echo.Context) error
-
+	// Create a new zone
 	// (POST /zones)
 	PostZones(ctx echo.Context) error
-
+	// Delete the selected zone
 	// (DELETE /zones/{domain})
 	DeleteZonesDomain(ctx echo.Context, domain string) error
-
+	// Get a zone by domain name
 	// (GET /zones/{domain})
 	GetZonesDomain(ctx echo.Context, domain string) error
-
+	// Update the selected zone
 	// (PUT /zones/{domain})
 	PutZonesDomain(ctx echo.Context, domain string) error
 }

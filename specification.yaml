@@ -318,10 +318,10 @@ components:
           example: "@"
         primary_name_server:
           type: string
-          example: ns1.example.com
+          example: ns1.example.com.
         mail_address:
           type: string
-          example: root.example.com
+          example: root.example.com.
         serial:
           type: string
           example: 2021081701
