@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/anantadwi13/dns-server-manager/internal"
+	"github.com/anantadwi13/dns-server-manager/internal/domain"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 
 func main() {
 	service := internal.NewService(
-		internal.NewConfig(BindFolderPath, DataPath, DBName),
+		domain.NewConfig(BindFolderPath, DataPath, DBName),
 	)
 	service.Start()
 }

@@ -1,4 +1,4 @@
-package internal
+package domain
 
 import (
 	"errors"
@@ -11,11 +11,11 @@ type Validation interface {
 }
 
 type Zone struct {
-	Id       string     `json:"id"`
-	Domain   string     `json:"domain"`
-	FilePath string     `json:"file_path"`
-	SOA      *SOARecord `json:"soa,omitempty"`
-	Records  []*Record  `json:"records,omitempty"`
+	Id       string
+	Domain   string
+	FilePath string
+	SOA      *SOARecord
+	Records  []*Record
 }
 
 func NewZone(domain string) *Zone {
@@ -28,6 +28,41 @@ func (z *Zone) RegisterSOA(soa *SOARecord) error {
 	}
 	z.SOA = soa
 	return nil
+}
+
+func (z *Zone) FindRecordyById(recordId string) *Record {
+	if recordId == "" {
+		return nil
+	}
+	for _, record := range z.Records {
+		if record.Id == recordId {
+			return record
+		}
+	}
+	return nil
+}
+
+func (z *Zone) FindRecordyByCriteria(name, recordType, value string) []*Record {
+	if name == "" && recordType == "" && value == "" {
+		return nil
+	}
+	var records []*Record
+	for _, record := range z.Records {
+		isMatch := true
+		if name != "" && record.Name != name {
+			isMatch = false
+		}
+		if recordType != "" && record.Type != recordType {
+			isMatch = false
+		}
+		if value != "" && record.Value != value {
+			isMatch = false
+		}
+		if isMatch {
+			records = append(records, record)
+		}
+	}
+	return records
 }
 
 func (z *Zone) AddRecord(record *Record) error {
@@ -48,7 +83,10 @@ func (z *Zone) AddRecord(record *Record) error {
 	return nil
 }
 
-func (z *Zone) DeleteRecord(record *Record) {
+func (z *Zone) DeleteRecord(record *Record) error {
+	if record == nil {
+		return errors.New("record is not found")
+	}
 	foundIdx := -1
 	for i, r := range z.Records {
 		if r == record || r.Id == record.Id {
@@ -56,10 +94,12 @@ func (z *Zone) DeleteRecord(record *Record) {
 			break
 		}
 	}
-	if foundIdx != -1 {
-		z.Records[foundIdx] = z.Records[len(z.Records)-1]
-		z.Records = z.Records[:len(z.Records)-1]
+	if foundIdx == -1 {
+		return errors.New("record is not found")
 	}
+	z.Records[foundIdx] = z.Records[len(z.Records)-1]
+	z.Records = z.Records[:len(z.Records)-1]
+	return nil
 }
 
 func (z *Zone) IsValid() bool {
@@ -67,10 +107,10 @@ func (z *Zone) IsValid() bool {
 }
 
 type Record struct {
-	Id    string `json:"id"`
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Id    string
+	Name  string
+	Type  string
+	Value string
 }
 
 func NewRecord(name string, recordType string, value string) *Record {
@@ -86,16 +126,16 @@ func (r *Record) IsValid() bool {
 }
 
 type SOARecord struct {
-	Id                string `json:"id"`
-	Name              string `json:"name"`
-	PrimaryNameServer string `json:"primary_name_server"`
-	MailAddress       string `json:"mail_address"`
-	Serial            string `json:"serial"`
-	SerialCounter     int    `json:"serial_counter"`
-	Refresh           int    `json:"refresh"`
-	Retry             int    `json:"retry"`
-	Expire            int    `json:"expire"`
-	CacheTTL          int    `json:"cache_ttl"`
+	Id                string
+	Name              string
+	PrimaryNameServer string
+	MailAddress       string
+	Serial            string
+	SerialCounter     int
+	Refresh           int
+	Retry             int
+	Expire            int
+	CacheTTL          int
 }
 
 func NewDefaultSOARecord(primaryNS, mailAddress string) *SOARecord {

@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: DNS Server Manager
+  description: DNS Server Manager
+  version: 0.2.0
+servers:
+  - url: 'http://{hostname}:5555'
+    variables:
+      hostname:
+        default: localhost
+tags:
+  - name: Zone
+  - name: Record
+paths:
+  /zones:
+    get:
+      summary: Get all zones
+      tags:
+        - Zone
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/zone-res"
+        default:
+          $ref: "#/components/responses/default-error"
+    post:
+      summary: Create a new zone
+      tags:
+        - Zone
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: string
+                  example: example.com
+                primary_ns:
+                  type: string
+                  example: ns1.example.com.
+                mail_addr:
+                  type: string
+                  example: root.example.com.
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/zone-res"
+        400:
+          $ref: "#/components/responses/bad-request"
+        default:
+          $ref: "#/components/responses/default-error"
+  /zones/{domain}:
+    get:
+      summary: Get a zone by domain name
+      tags:
+        - Zone
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/zone-res"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+    put:
+      summary: Update the selected zone
+      tags:
+        - Zone
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: string
+                  example: example.com
+                primary_ns:
+                  type: string
+                  example: ns1.example.com.
+                mail_addr:
+                  type: string
+                  example: root.example.com.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/zone-res"
+        400:
+          $ref: "#/components/responses/bad-request"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+    delete:
+      summary: Delete the selected zone
+      tags:
+        - Zone
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/general-res"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+  /records/{domain}:
+    get:
+      summary: Get all records on the selected zone
+      tags:
+        - Record
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/record-res"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+    post:
+      summary: Create a new record on the selected zone
+      tags:
+        - Record
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/record-req"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/record-res"
+        400:
+          $ref: "#/components/responses/bad-request"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+  /records/{domain}/{record_id}:
+    get:
+      summary: Get a record by id on the selected zone
+      tags:
+        - Record
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+        - name: record_id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/record-res"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+    put:
+      summary: Update a record by id on the selected zone
+      tags:
+        - Record
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+        - name: record_id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/record-req"
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/record-res"
+        400:
+          $ref: "#/components/responses/bad-request"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+    delete:
+      summary: Delete a record by id on the selected zone
+      tags:
+        - Record
+      parameters:
+        - name: domain
+          required: true
+          in: path
+          schema:
+            type: string
+            example: example.com
+        - name: record_id
+          required: true
+          in: path
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/general-res"
+        404:
+          $ref: "#/components/responses/not-found"
+        default:
+          $ref: "#/components/responses/default-error"
+components:
+  schemas:
+    zone-res:
+      type: object
+      required: [ id,domain,records,soa ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        domain:
+          type: string
+          example: example.com
+        soa:
+          $ref: "#/components/schemas/soa-res"
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/record-res"
+    soa-res:
+      type: object
+      required: [ id,name,primary_name_server,mail_address,serial,refresh,retry,expire,cache_ttl ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "@"
+        primary_name_server:
+          type: string
+          example: ns1.example.com.
+        mail_address:
+          type: string
+          example: root.example.com.
+        serial:
+          type: string
+          example: 2021081701
+        refresh:
+          type: integer
+          example: 7200
+        retry:
+          type: integer
+          example: 3600
+        expire:
+          type: integer
+          example: 1209600
+        cache_ttl:
+          type: integer
+          example: 180
+    record-req:
+      type: object
+      required: [ name,type,value ]
+      properties:
+        name:
+          type: string
+          example: "@"
+        type:
+          type: string
+          enum: [ A,AAAA,NS,CNAME,MX,TXT,SRV,DNSKEY,KEY,IPSECKEY,PTR,SPF,TLSA,CAA ]
+          example: A
+        value:
+          type: string
+          example: 127.0.0.1
+    record-res:
+      type: object
+      required: [ id,name,type,value ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "@"
+        type:
+          type: string
+          enum: [ A,AAAA,NS,CNAME,MX,TXT,SRV,DNSKEY,KEY,IPSECKEY,PTR,SPF,TLSA,CAA ]
+          example: A
+        value:
+          type: string
+          example: 127.0.0.1
+    general-res:
+      title: General Response
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+  responses:
+    bad-request:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/general-res'
+    not-found:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/general-res'
+    default-error:
+      description: General error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/general-res'
