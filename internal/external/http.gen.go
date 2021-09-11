@@ -130,38 +130,70 @@ type DefaultError GeneralRes
 // NotFound defines model for not-found.
 type NotFound GeneralRes
 
+// CreateRecordJSONBody defines parameters for CreateRecord.
+type CreateRecordJSONBody RecordReq
+
+// UpdateRecordJSONBody defines parameters for UpdateRecord.
+type UpdateRecordJSONBody RecordReq
+
+// CreateZoneJSONBody defines parameters for CreateZone.
+type CreateZoneJSONBody struct {
+	Domain    string `json:"domain"`
+	MailAddr  string `json:"mail_addr"`
+	PrimaryNs string `json:"primary_ns"`
+}
+
+// UpdateZoneJSONBody defines parameters for UpdateZone.
+type UpdateZoneJSONBody struct {
+	Domain    *string `json:"domain,omitempty"`
+	MailAddr  *string `json:"mail_addr,omitempty"`
+	PrimaryNs *string `json:"primary_ns,omitempty"`
+}
+
+// CreateRecordJSONRequestBody defines body for CreateRecord for application/json ContentType.
+type CreateRecordJSONRequestBody CreateRecordJSONBody
+
+// UpdateRecordJSONRequestBody defines body for UpdateRecord for application/json ContentType.
+type UpdateRecordJSONRequestBody UpdateRecordJSONBody
+
+// CreateZoneJSONRequestBody defines body for CreateZone for application/json ContentType.
+type CreateZoneJSONRequestBody CreateZoneJSONBody
+
+// UpdateZoneJSONRequestBody defines body for UpdateZone for application/json ContentType.
+type UpdateZoneJSONRequestBody UpdateZoneJSONBody
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Get all records on the selected zone
 	// (GET /records/{domain})
-	GetRecordsDomain(ctx echo.Context, domain string) error
+	GetRecords(ctx echo.Context, domain string) error
 	// Create a new record on the selected zone
 	// (POST /records/{domain})
-	PostRecordsDomain(ctx echo.Context, domain string) error
+	CreateRecord(ctx echo.Context, domain string) error
 	// Delete a record by id on the selected zone
 	// (DELETE /records/{domain}/{record_id})
-	DeleteRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
+	DeleteRecord(ctx echo.Context, domain string, recordId string) error
 	// Get a record by id on the selected zone
 	// (GET /records/{domain}/{record_id})
-	GetRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
+	GetRecordById(ctx echo.Context, domain string, recordId string) error
 	// Update a record by id on the selected zone
 	// (PUT /records/{domain}/{record_id})
-	PutRecordsDomainRecordId(ctx echo.Context, domain string, recordId string) error
+	UpdateRecord(ctx echo.Context, domain string, recordId string) error
 	// Get all zones
 	// (GET /zones)
 	GetZones(ctx echo.Context) error
 	// Create a new zone
 	// (POST /zones)
-	PostZones(ctx echo.Context) error
+	CreateZone(ctx echo.Context) error
 	// Delete the selected zone
 	// (DELETE /zones/{domain})
-	DeleteZonesDomain(ctx echo.Context, domain string) error
+	DeleteZone(ctx echo.Context, domain string) error
 	// Get a zone by domain name
 	// (GET /zones/{domain})
-	GetZonesDomain(ctx echo.Context, domain string) error
+	GetZoneByDomain(ctx echo.Context, domain string) error
 	// Update the selected zone
 	// (PUT /zones/{domain})
-	PutZonesDomain(ctx echo.Context, domain string) error
+	UpdateZone(ctx echo.Context, domain string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -169,8 +201,8 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetRecordsDomain converts echo context to params.
-func (w *ServerInterfaceWrapper) GetRecordsDomain(ctx echo.Context) error {
+// GetRecords converts echo context to params.
+func (w *ServerInterfaceWrapper) GetRecords(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -181,12 +213,12 @@ func (w *ServerInterfaceWrapper) GetRecordsDomain(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GetRecordsDomain(ctx, domain)
+	err = w.Handler.GetRecords(ctx, domain)
 	return err
 }
 
-// PostRecordsDomain converts echo context to params.
-func (w *ServerInterfaceWrapper) PostRecordsDomain(ctx echo.Context) error {
+// CreateRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateRecord(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -197,12 +229,12 @@ func (w *ServerInterfaceWrapper) PostRecordsDomain(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostRecordsDomain(ctx, domain)
+	err = w.Handler.CreateRecord(ctx, domain)
 	return err
 }
 
-// DeleteRecordsDomainRecordId converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteRecordsDomainRecordId(ctx echo.Context) error {
+// DeleteRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteRecord(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -221,12 +253,12 @@ func (w *ServerInterfaceWrapper) DeleteRecordsDomainRecordId(ctx echo.Context) e
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.DeleteRecordsDomainRecordId(ctx, domain, recordId)
+	err = w.Handler.DeleteRecord(ctx, domain, recordId)
 	return err
 }
 
-// GetRecordsDomainRecordId converts echo context to params.
-func (w *ServerInterfaceWrapper) GetRecordsDomainRecordId(ctx echo.Context) error {
+// GetRecordById converts echo context to params.
+func (w *ServerInterfaceWrapper) GetRecordById(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -245,12 +277,12 @@ func (w *ServerInterfaceWrapper) GetRecordsDomainRecordId(ctx echo.Context) erro
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GetRecordsDomainRecordId(ctx, domain, recordId)
+	err = w.Handler.GetRecordById(ctx, domain, recordId)
 	return err
 }
 
-// PutRecordsDomainRecordId converts echo context to params.
-func (w *ServerInterfaceWrapper) PutRecordsDomainRecordId(ctx echo.Context) error {
+// UpdateRecord converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateRecord(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -269,7 +301,7 @@ func (w *ServerInterfaceWrapper) PutRecordsDomainRecordId(ctx echo.Context) erro
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PutRecordsDomainRecordId(ctx, domain, recordId)
+	err = w.Handler.UpdateRecord(ctx, domain, recordId)
 	return err
 }
 
@@ -282,17 +314,17 @@ func (w *ServerInterfaceWrapper) GetZones(ctx echo.Context) error {
 	return err
 }
 
-// PostZones converts echo context to params.
-func (w *ServerInterfaceWrapper) PostZones(ctx echo.Context) error {
+// CreateZone converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateZone(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PostZones(ctx)
+	err = w.Handler.CreateZone(ctx)
 	return err
 }
 
-// DeleteZonesDomain converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteZonesDomain(ctx echo.Context) error {
+// DeleteZone converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteZone(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -303,12 +335,12 @@ func (w *ServerInterfaceWrapper) DeleteZonesDomain(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.DeleteZonesDomain(ctx, domain)
+	err = w.Handler.DeleteZone(ctx, domain)
 	return err
 }
 
-// GetZonesDomain converts echo context to params.
-func (w *ServerInterfaceWrapper) GetZonesDomain(ctx echo.Context) error {
+// GetZoneByDomain converts echo context to params.
+func (w *ServerInterfaceWrapper) GetZoneByDomain(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -319,12 +351,12 @@ func (w *ServerInterfaceWrapper) GetZonesDomain(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GetZonesDomain(ctx, domain)
+	err = w.Handler.GetZoneByDomain(ctx, domain)
 	return err
 }
 
-// PutZonesDomain converts echo context to params.
-func (w *ServerInterfaceWrapper) PutZonesDomain(ctx echo.Context) error {
+// UpdateZone converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateZone(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "domain" -------------
 	var domain string
@@ -335,7 +367,7 @@ func (w *ServerInterfaceWrapper) PutZonesDomain(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PutZonesDomain(ctx, domain)
+	err = w.Handler.UpdateZone(ctx, domain)
 	return err
 }
 
@@ -367,15 +399,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/records/:domain", wrapper.GetRecordsDomain)
-	router.POST(baseURL+"/records/:domain", wrapper.PostRecordsDomain)
-	router.DELETE(baseURL+"/records/:domain/:record_id", wrapper.DeleteRecordsDomainRecordId)
-	router.GET(baseURL+"/records/:domain/:record_id", wrapper.GetRecordsDomainRecordId)
-	router.PUT(baseURL+"/records/:domain/:record_id", wrapper.PutRecordsDomainRecordId)
+	router.GET(baseURL+"/records/:domain", wrapper.GetRecords)
+	router.POST(baseURL+"/records/:domain", wrapper.CreateRecord)
+	router.DELETE(baseURL+"/records/:domain/:record_id", wrapper.DeleteRecord)
+	router.GET(baseURL+"/records/:domain/:record_id", wrapper.GetRecordById)
+	router.PUT(baseURL+"/records/:domain/:record_id", wrapper.UpdateRecord)
 	router.GET(baseURL+"/zones", wrapper.GetZones)
-	router.POST(baseURL+"/zones", wrapper.PostZones)
-	router.DELETE(baseURL+"/zones/:domain", wrapper.DeleteZonesDomain)
-	router.GET(baseURL+"/zones/:domain", wrapper.GetZonesDomain)
-	router.PUT(baseURL+"/zones/:domain", wrapper.PutZonesDomain)
+	router.POST(baseURL+"/zones", wrapper.CreateZone)
+	router.DELETE(baseURL+"/zones/:domain", wrapper.DeleteZone)
+	router.GET(baseURL+"/zones/:domain", wrapper.GetZoneByDomain)
+	router.PUT(baseURL+"/zones/:domain", wrapper.UpdateZone)
 
 }

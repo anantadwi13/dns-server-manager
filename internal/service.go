@@ -52,6 +52,7 @@ func (s *service) Start() {
 
 func (s *service) registerDependencies(ctx context.Context) {
 	s.apiServer = echo.New()
+	s.apiServer.HideBanner = true
 
 	err := os.MkdirAll(s.config.DataFolderPath(), 0777)
 	if err != nil {
@@ -148,7 +149,7 @@ func (s *service) gracefulShutdown(ctx context.Context) {
 	}()
 }
 
-func (s *service) GetRecordsDomain(c echo.Context, domainName string) error {
+func (s *service) GetRecords(c echo.Context, domainName string) error {
 	zone, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainName)
 	if err != nil {
 		return responseServerErr(c, err)
@@ -165,12 +166,14 @@ func (s *service) GetRecordsDomain(c echo.Context, domainName string) error {
 	return c.JSON(http.StatusOK, recordsRes)
 }
 
-func (s *service) PostRecordsDomain(c echo.Context, domainName string) error {
-	name := c.FormValue("name")
-	recordType := c.FormValue("type")
-	value := c.FormValue("value")
+func (s *service) CreateRecord(c echo.Context, domainName string) error {
+	req := new(external.CreateRecordJSONRequestBody)
 
-	if name == "" || recordType == "" || value == "" {
+	if err := c.Bind(req); err != nil {
+		return responseClientErr(c, err)
+	}
+
+	if req.Name == "" || req.Type == "" || req.Value == "" {
 		return responseClientErr(c, errors.New("make sure name, type, value are set"))
 	}
 
@@ -182,7 +185,7 @@ func (s *service) PostRecordsDomain(c echo.Context, domainName string) error {
 		return responseNotFound(c, "zone is not found")
 	}
 
-	record := domain.NewRecord(name, recordType, value)
+	record := domain.NewRecord(req.Name, string(req.Type), req.Value)
 
 	err = zone.AddRecord(record)
 	if err != nil {
@@ -202,7 +205,7 @@ func (s *service) PostRecordsDomain(c echo.Context, domainName string) error {
 	return c.JSON(http.StatusCreated, recordMapper(record))
 }
 
-func (s *service) DeleteRecordsDomainRecordId(c echo.Context, domainName string, recordId string) error {
+func (s *service) DeleteRecord(c echo.Context, domainName string, recordId string) error {
 	zone, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainName)
 	if err != nil {
 		return responseServerErr(c, err)
@@ -234,7 +237,7 @@ func (s *service) DeleteRecordsDomainRecordId(c echo.Context, domainName string,
 	return responseOk(c, "OK")
 }
 
-func (s *service) GetRecordsDomainRecordId(c echo.Context, domainName string, recordId string) error {
+func (s *service) GetRecordById(c echo.Context, domainName string, recordId string) error {
 	zone, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainName)
 	if err != nil {
 		return responseServerErr(c, err)
@@ -251,10 +254,13 @@ func (s *service) GetRecordsDomainRecordId(c echo.Context, domainName string, re
 	return c.JSON(http.StatusOK, recordMapper(record))
 }
 
-func (s *service) PutRecordsDomainRecordId(c echo.Context, domainName string, recordId string) error {
-	name := c.FormValue("name")
-	recordType := c.FormValue("type")
-	value := c.FormValue("value")
+func (s *service) UpdateRecord(c echo.Context, domainName string, recordId string) error {
+	req := new(external.UpdateRecordJSONRequestBody)
+
+	err := c.Bind(req)
+	if err != nil {
+		return responseClientErr(c, err)
+	}
 
 	zone, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainName)
 	if err != nil {
@@ -269,14 +275,14 @@ func (s *service) PutRecordsDomainRecordId(c echo.Context, domainName string, re
 		return responseNotFound(c, "record is not found")
 	}
 
-	if name != "" {
-		record.Name = name
+	if req.Name != "" {
+		record.Name = req.Name
 	}
-	if recordType != "" {
-		record.Type = recordType
+	if req.Type != "" {
+		record.Type = string(req.Type)
 	}
-	if value != "" {
-		record.Value = value
+	if req.Value != "" {
+		record.Value = req.Value
 	}
 
 	if !record.IsValid() {
@@ -309,16 +315,18 @@ func (s *service) GetZones(c echo.Context) error {
 	return c.JSON(http.StatusOK, zonesRes)
 }
 
-func (s *service) PostZones(c echo.Context) error {
-	domainReq := c.FormValue("domain")
-	primaryNSReq := c.FormValue("primary_ns")
-	mailAddrReq := c.FormValue("mail_addr")
+func (s *service) CreateZone(c echo.Context) error {
+	req := new(external.CreateZoneJSONRequestBody)
 
-	if domainReq == "" || primaryNSReq == "" || mailAddrReq == "" {
+	if err := c.Bind(req); err != nil {
+		return responseClientErr(c, err)
+	}
+
+	if req.Domain == "" || req.PrimaryNs == "" || req.MailAddr == "" {
 		return responseClientErr(c, errors.New("make sure domain, primary_ns, and mail_addr are set"))
 	}
 
-	zoneExist, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainReq)
+	zoneExist, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), req.Domain)
 	if err != nil {
 		return responseServerErr(c, err)
 	}
@@ -326,14 +334,14 @@ func (s *service) PostZones(c echo.Context) error {
 		return responseClientErr(c, errors.New("zone already exists"))
 	}
 
-	zone := domain.NewZone(domainReq)
+	zone := domain.NewZone(req.Domain)
 
-	err = zone.RegisterSOA(domain.NewDefaultSOARecord(primaryNSReq, mailAddrReq))
+	err = zone.RegisterSOA(domain.NewDefaultSOARecord(req.PrimaryNs, req.MailAddr))
 	if err != nil {
 		return responseClientErr(c, err)
 	}
 
-	err = zone.AddRecord(domain.NewNSRecord("@", primaryNSReq))
+	err = zone.AddRecord(domain.NewNSRecord("@", req.PrimaryNs))
 	if err != nil {
 		return responseClientErr(c, err)
 	}
@@ -351,7 +359,7 @@ func (s *service) PostZones(c echo.Context) error {
 	return c.JSON(http.StatusCreated, zoneMapper(zone))
 }
 
-func (s *service) DeleteZonesDomain(c echo.Context, domainName string) error {
+func (s *service) DeleteZone(c echo.Context, domainName string) error {
 	ctx := c.Request().Context()
 
 	zone, err := s.zoneRepository.GetZoneByDomain(ctx, domainName)
@@ -375,7 +383,7 @@ func (s *service) DeleteZonesDomain(c echo.Context, domainName string) error {
 	return responseOk(c, "OK")
 }
 
-func (s *service) GetZonesDomain(c echo.Context, domainName string) error {
+func (s *service) GetZoneByDomain(c echo.Context, domainName string) error {
 	zone, err := s.zoneRepository.GetZoneByDomain(c.Request().Context(), domainName)
 	if err != nil {
 		return responseClientErr(c, err)
@@ -387,11 +395,14 @@ func (s *service) GetZonesDomain(c echo.Context, domainName string) error {
 	return c.JSON(http.StatusOK, zoneMapper(zone))
 }
 
-func (s *service) PutZonesDomain(c echo.Context, domainName string) error {
+func (s *service) UpdateZone(c echo.Context, domainName string) error {
 	ctx := c.Request().Context()
-	domainReq := c.FormValue("domain")
-	primaryNSReq := c.FormValue("primary_ns")
-	mailAddrReq := c.FormValue("mail_addr")
+
+	req := new(external.UpdateZoneJSONRequestBody)
+	err := c.Bind(req)
+	if err != nil {
+		return responseClientErr(c, err)
+	}
 
 	zone, err := s.zoneRepository.GetZoneByDomain(ctx, domainName)
 	if err != nil {
@@ -401,14 +412,14 @@ func (s *service) PutZonesDomain(c echo.Context, domainName string) error {
 		return responseNotFound(c, "zone is not found")
 	}
 
-	if domainReq != "" {
-		zone.Domain = domainReq
+	if req.Domain != nil && *req.Domain != "" {
+		zone.Domain = *req.Domain
 	}
-	if primaryNSReq != "" {
-		zone.SOA.PrimaryNameServer = primaryNSReq
+	if req.PrimaryNs != nil && *req.PrimaryNs != "" {
+		zone.SOA.PrimaryNameServer = *req.PrimaryNs
 	}
-	if mailAddrReq != "" {
-		zone.SOA.MailAddress = mailAddrReq
+	if req.MailAddr != nil && *req.MailAddr != "" {
+		zone.SOA.MailAddress = *req.MailAddr
 	}
 
 	if !zone.IsValid() {

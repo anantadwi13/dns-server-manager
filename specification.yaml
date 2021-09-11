@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: DNS Server Manager
   description: DNS Server Manager
-  version: 0.2.0
+  version: 0.3.0
 servers:
   - url: 'http://{hostname}:5555'
     variables:
@@ -14,6 +14,7 @@ tags:
 paths:
   /zones:
     get:
+      operationId: getZones
       summary: Get all zones
       tags:
         - Zone
@@ -29,14 +30,16 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     post:
+      operationId: createZone
       summary: Create a new zone
       tags:
         - Zone
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               type: object
+              required: [ domain,primary_ns,mail_addr ]
               properties:
                 domain:
                   type: string
@@ -60,6 +63,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /zones/{domain}:
     get:
+      operationId: getZoneByDomain
       summary: Get a zone by domain name
       tags:
         - Zone
@@ -82,6 +86,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     put:
+      operationId: updateZone
       summary: Update the selected zone
       tags:
         - Zone
@@ -94,7 +99,7 @@ paths:
             example: example.com
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               type: object
               properties:
@@ -121,6 +126,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     delete:
+      operationId: deleteZone
       summary: Delete the selected zone
       tags:
         - Zone
@@ -144,6 +150,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /records/{domain}:
     get:
+      operationId: getRecords
       summary: Get all records on the selected zone
       tags:
         - Record
@@ -168,6 +175,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     post:
+      operationId: createRecord
       summary: Create a new record on the selected zone
       tags:
         - Record
@@ -180,7 +188,7 @@ paths:
             example: example.com
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               $ref: "#/components/schemas/record-req"
       responses:
@@ -198,6 +206,7 @@ paths:
           $ref: "#/components/responses/default-error"
   /records/{domain}/{record_id}:
     get:
+      operationId: getRecordById
       summary: Get a record by id on the selected zone
       tags:
         - Record
@@ -226,6 +235,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     put:
+      operationId: updateRecord
       summary: Update a record by id on the selected zone
       tags:
         - Record
@@ -244,7 +254,7 @@ paths:
             format: uuid
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
               $ref: "#/components/schemas/record-req"
       responses:
@@ -261,6 +271,7 @@ paths:
         default:
           $ref: "#/components/responses/default-error"
     delete:
+      operationId: deleteRecord
       summary: Delete a record by id on the selected zone
       tags:
         - Record
